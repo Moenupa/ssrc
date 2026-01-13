@@ -1,0 +1,41 @@
+#!/bin/sh
+#SBATCH -o logs/%x/%j.out
+#SBATCH -e logs/%x/%j.err
+#SBATCH -t 30-00:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --gpus-per-node=0
+#SBATCH --mem=0
+#SBATCH --exclusive
+#SBATCH -J Qwen3-VL-4B-Instruct/Qwen/m3llm
+
+# train model by job name `model/src/dest`, e.g. `Qwen3-8B/Qwen/m3llm`
+# Qwen/Qwen3-8B ---data=m3llm--> Qwen-m3llm/Qwen3-8B
+
+# this trajectory == a linked list.
+# give proper dataset names to manage this tree of models.
+
+set -e
+set -x
+
+# META-configs
+MODEL_DIR=saves
+CONFIG=examples/train_full/qwen2_5vl_full_sft.yaml
+
+# parse SLURM_JOB_NAME for training
+MODELID=$(DELIM='/' IDX=0 python3 slurm/src/argv.py "$SLURM_JOB_NAME")
+SRC=$(DELIM='/' IDX=1 python3 slurm/src/argv.py "$SLURM_JOB_NAME")
+DEST=$(DELIM='/' IDX=2 python3 slurm/src/argv.py "$SLURM_JOB_NAME") # registered dataset name
+
+# overrides the META-configs
+ARGS=""
+ARGS="$ARGS model_name_or_path=$MODEL_DIR/$SRC/$MODELID"
+ARGS="$ARGS output_dir=$MODEL_DIR/$SRC-$DEST/$MODELID"
+ARGS="$ARGS dataset=$DEST"
+ARGS="$ARGS per_device_train_batch_size=2"
+ARGS="$ARGS gradient_accumulation_steps=16"
+
+echo srun --mpi=pmix slurm/multinode/pernode.cli.sh \
+	$CONFIG \
+	$ARGS \
+	$@

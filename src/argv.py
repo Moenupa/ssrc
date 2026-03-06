@@ -14,6 +14,7 @@ __email__ = "49304833+Moenupa@users.noreply.github.com"
 import os
 import sys
 
+
 DELIM = os.environ["DELIM"]
 IDX = os.environ["IDX"]
 

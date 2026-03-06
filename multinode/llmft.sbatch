@@ -40,7 +40,18 @@ ARGS="$ARGS dataset=$DATA"
 ARGS="$ARGS per_device_train_batch_size=2"
 ARGS="$ARGS gradient_accumulation_steps=16"
 
-echo srun --mpi=pmix slurm/multinode/pernode.cli.sh \
+if command -v scontrol &> /dev/null
+then
+	export MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
+else
+	export MASTER_ADDR=localhost
+fi
+export MASTER_PORT=29500
+export GPUS_PER_NODE=${SLURM_GPUS_PER_NODE:-8}
+export NNODES=${SLURM_NNODES:-1}
+export NUM_PROCESSES=$(expr $NNODES \* $GPUS_PER_NODE)
+
+echo srun --mpi=pmix slurm/multinode/llmft.pernode.sh\
 	$CONFIG \
 	$ARGS \
 	$@
